@@ -21,7 +21,7 @@ In-progress
 &nbsp;
 &nbsp;
 
-## Running the demo
+## Running the app
 Follow the following instructions to run the sample on your device:
 
 1. Clone this repo.
