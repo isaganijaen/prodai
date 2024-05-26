@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>ProdAI</title>
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.11.1/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="styles.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+    <div id="app" class="flex h-screen">
+        <div class="sidebar bg-white text-xs h-screen border border-gray-100 min-w-[230px]">
+            <div class="select-model">
+                <select v-model="selectedModel" @change="loadModel"
+                    class="bg-gray-100  border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                    <option value="" disabled>Select your model</option>
+                    <option value="gemma-1.1-2b-it-gpu-int4.bin">Gemma-1.1-2b int4</option>
+                    <option value="gemma-2b-it-gpu-int8.bin">Gemma-2b int8</option>
+                </select>
+            </div>
+            <h2 class="text-xl font-bold my-10">✨ Conversations</h2>
+            <ul class="chat-history-list mt-2">
+                <li v-for="(conversation, index) in chatHistory" :key="index" @click="loadConversation(index)"
+                    class="mb-2 cursor-pointer">
+                    <div class="flex items-center justify-between bg-gray-200 p-2 rounded">
+                        <span>{{ conversation.title }}</span>
+                        <button @click.stop="editTitle(index)" class="text-sm text-gray-400 hover:underline"><svg
+                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 32 32" stroke-width="1.5"
+                                stroke="currentColor" class="size-6">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                            </svg>
+                        </button>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        <!--main content-->
+
+        <div class="flex-1 flex flex-col justify-between bg-gray-100 leading-relaxed text-gray-900 h-screen">
+            <div class="navbar bg-base-100">
+                <div class="flex-none">
+                    <button class="btn btn-square btn-ghost">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            class="inline-block w-5 h-5 stroke-current">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex-1">
+                    <a class="btn btn-ghost text-xl">
+                    
+                        <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="50"
+                        height="50">
+                        <title>icons8-science-fiction-100</title>
+                        <defs>
+                            <image width="66" height="82" id="img1"
+                                href="data:image/png;base64,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" />
+                        </defs>
+                        <style>
+                        </style>
+                        <use id="Background" href="#img1" x="17" y="9" />
+                    </svg>
+                        ProdAI
+                    </a>
+                </div>
+                <div class="flex-none">
+                    <button class="btn btn-square btn-ghost">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            class="inline-block w-5 h-5 stroke-current">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!--Main Conversation area-->
+
+            <div class=" flex-1 overflow-y-auto p-4 mb-24 space-y-12">
+                <div v-for="message in activeConversation.messages" :key="message.id" class="message"
+                    :class="message.sender">
+
+                    <!--AI-->
+                    <div v-if="message.sender === 'ai'" class="mr-2 ">
+                        <span class="rounded-full bg-gray-300 w-8 h-8 flex items-center justify-center mr-4  px-1 py-1
+                       
+                        
+                        ">
+
+
+                            <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100"
+                                height="100">
+                                <title>icons8-science-fiction-100</title>
+                                <defs>
+                                    <image width="66" height="82" id="img1"
+                                        href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEIAAABSCAYAAADgggJzAAAAAXNSR0IB2cksfwAADNBJREFUeJzlXAl0VOUVjtat1da6tKctHhUStkDWISErGUhCQhIgLGELZF+AgOyLtBA2a1gkESg1uKAiilEYCmhE0AgBaTV2UQpHu+RYFI/LIam4gSd8vXcy/8s/M++feRMzM5jec74z/7vrdz8mk2TmhYAAH1uPCph7zMKGO2ahVg/W2Gwk+ZqXT+2uCswnXCbADS7fNRPz/M3XK9arDDffPRMXe84EjODuGfimbxF+7G/eHlufMtzeazrye83AEgW2BM4AbGglVCnQKvKo32ZlP5rVrwK3+XtvOwsqRzHhQu/pgBEETUezshfFDPehmUEzUOjLXZXWuxxj+pbjMgFGQc+eCwGVuNqpWQ5+wDFPevHsPuUY7YfV7a1/Gd4lwIZP+5ViZ/9S1OqBYt9queXIcOzVrwyZIm7NVffhGZ9Jc8/4Y3fNgstw5wAiIjCwDP3c5B+U8s/RAskiRoulDCjFRyIeXIr9LnuVI1ieHVKCO7pqL49tQDnCQkqJBGFgCVrd5YcWIYJyL4oaW93HDNlHS33Dvd3145mixkh+l1tEEX4VVoShYcUoDysBGKElaDFSS7m5ocX4VtQ5gmMkxGQjvXimVstciBNz+27bGbCg2bieBu2KLAZ0YEgItsgSxEQUo9GxB/U+ZirEYMN9aKYeF+r9VHAOruvclgZsUBEqCVDAsBDCYvLQw1SMVEZn/iV5ppJPIVZ42s+wRRWiKboQsKIA56IKcFa7LtQXoqwJ1y5pws2dncm13EMvxjPFfCsX4iTxe7OzM91aTAGaCWAMzoc5Lh/h2nWBvRC1RL7yGGpWNuJrAuj8+urj6Gt0FudyDddaexxDda2DIDxTzGcuzElcM9eu2tvJ4vLQTAN5KOJtQojr2Dx7IapfxYqaBsAOr+K04zJ6VlmH66j+jGN9dQN+I+fxTDGfudg4tV/neVGI+GloTsgDGEII7XqavRBPHMYZAhzx2GFEuZvz5CEM1qt9/GX83YFPi5gvhJD4eE+IxKloHjINYCTlwpxEw8U1xeyE+EM9Tu+vBxyx7wUMcjfnwEuI1qvd/yJOOfBp0fgQF+Yk8fGeEOapeI8ABg2tJTwors259kIcPYDlxw4AdtiP000GvjRO0ZcG5Z9xrD+63/5Lg2dKfB5kThof4trV+2s2LBfPD6MhunAQoqkW1769F9XvWPAVPV5+24Ljf92LPkZncS7VneBaW49N3NOBT4uKz9CpeK6r9nay1KkYmDIFn6fmAk6Yov/tEw245l91nf/2ybXcQ5cPzdTjwhxJpODOzjRkJEbPtCmoGj4FdfT4MgFWTPb8B6rvajxTm09cbJyq0ibibp8SyZiC8BGTAUb6JN8LwTPFfObi6/maZUxE/8xJACNjEi7mePPnewdLT8f1PFPMz5rs+i0Arxot/sORE/ElAYysCdgxcgJiMnNg8iZ4Bs17Qsyl6y/o2+cNfhOCbdQEbBs9AfAztvpVBDZ6Vtw0Jgd/JMAfyB6Pk8zB3zpYLZ+elmPHY/G48XiL8NnYcTjvCPJ/TgCDrtv0cmxoE3lco+jFM5rG5mARv1b4e3+PbNw4mHPGAYzx49Q//nJM5HGNDyn6xibSUpPGAjYoheCYyJvYHYXIpaWm0HI2KIXgmMjL9acQuWNwR242VkzNxnHC2aljcL4rQH0/p0cwqH+bMq891p7XXtMl83kX6tdIWM47upAAV+WNxjLCV3nZQLcG7TgtG0t5ZycR8kfjsYLRwP8TaOdH7WQoHIV5RaMAAbp+v3AkFhRmIaEkGyYB8p3TckaiTI5dCWBOEr9zdjHapSgLC4tG4j8Ou95jFYGeIrcVZ6G1ZCRgwxFK0L0vgfKaRV5x5pX3is6cNH5Z+i/Iuen4CcVe0fbNQkvxcNwaUJaF6QTY8Ak9XX6qGlSaiWaRW34FCsGcBD/mqsqbkYlbyjLxqbZ3Jsq4uG56JmBFBta5GkQ5zSLXiBCVRzGsshH7ugTUy4gQ2i4uhLDtskHae3dAxQicqMgAGDMzXH/mSDnNIrfCgBDbj6Dg4SNAV4B7uZvHnDR+Ga6FoL2naLmkQcCsdPxl9giAMWsEsl0VU7xZ5FakuReivh4F9S8CXYJ6A0IQJ2kXl0LwrlouaRAwJw0n56QDjHvSseeeNFQpkY5WkTvHgBCn9iH4bxbM7QpwL3fzmJO0S6ubXfZIu5wMmJeGzfPowlMYEcLXxpw6swuhJmB2On42fzj+uSAN8ARU7HTrj7+NOXm6B+Ef87Nwu7VBZRJuWpSCkoXD8d6i4QCDzkcWpqLKCjoLv8DiVOT7eW8nI64FjjxVe1h3pZ0XpOJGp0ZLUmBZkgowFqdgrvDzWfil+EKfbmnAiNciHZ76e9CuykZLKXhvCsBYKjXgs/Br8WTs9PJeHtu9yXjaiadij6WuhFiWDMuvkwHGsmEdDfgs/FL8Qy/v5bExJx2eunvwrspGy4fCsmIYwFguNeCz8MuoHOblj9U8MHqdG6jHUbUH76pstpKCBDAqpQZ8Fn4ZlUPp284VYsRlqy5H9R5qIVaZYVltBhirkjoa8Fn4VyehTTr/d12c/++gr0rBzcTngh5H1R68q7Lh2iGwrE0CbNAa8FnzD8HhNUn4RLpe4+U93RpxuF/wsXIjjgb2UAvxWwoSYEViRwM+a37KuW8IFotrOl+qGoIQj4gnIZzqVt+XiFo7kO/+eM/uoOV85iD4rE3EIqN7qJtSkJaCFVIDPgs/52ygH0LI94Hke6vShB+5I40AXEV1NZR/WZvjAFtsE5zfT3QyG48/a7WJOMs+o3soG69PhIUAG+ZK/rmS39pgXQKS6dwm+Q/QK7fuDR1anwQslvJdYt0QLHDVi2dRvxekmrYNie3vWXiyh77C8bBsTAAY6+OlBnQWfs4RfrreKPy22M7KYP1bA9hP8RYp9+2N8VhP5yor2s/vSP3Oq3o9mI7rKb7LbnYCNnR2Dyd7IA6WTfEA4wGpAZ81f1xHg+o4hAu/hBPrk/ALx96bEhGp5cTh6/sTcIvT/BjcyjGRtzEWETp9fkl8Xnecy1w6u4eT1VCQAEZ1TEcDPgt/jYMQkr8DsThHNXny13l1PMxSjvJNE45pHOI7ftWvDMDVNfHIp5kf6c2UhfB0DyfbEgPLlliAsTkWz9JjGcN2tvo5R+RvpeGaXwebY/DGlsEYVWvCtfRolmJKITim5VEN19Kc0dTrTVeztkpCeLqHk20dDMvvYgBX4BxZCM0fg1Z6nE74QqfmY4oflHKVQnBMyjvItTo8eMZ028z2XEkIT/dwst9TkAA36BAiCuGSv8W2SNC2wdjrqse2aLUQHHNTu6c2DoE2vi3Cz1w6u4eT1UbBUhsNMB6KxruEwza8K/ycI/K303Ap3+6uuoeiEEv+3YRLWm1HD6UQHHPKb++xm3vazaCZIme7JISnezjZ9kGwPBwFMOg8V/LPlfx2Qmj+KP3bC7fF4uePDEIRxV8WuQ8PUgvBMS0vCoe5lnvo8qWZ0nxNCE/3cLJHB6GOAMYjpo77nh81Ybnkf1bzRyNY+AlfKhvzgiaYpR5KITgm8rjGVU+eqc2P7nhLwNM9nGzHIKwhgPGYCR/siEIyFaXQ9YeSf5XI3xWCW4SfsT1afd/BDlpK6qEUgmNaTxdCPGHCnfLsHWEdH1V6uoeTPRmBIBpwiQA9PG7CRUKgXEPXp6Wcla6EkPKUQnBM5LkUIhJrtH6R9n++0Jk9nMWIRNnOSLQR4IC2pyJR6phP/mVSzjdUr/sZ5U5aSspTCsExLU8hxM4IJNOci1Le0u+6h649EwbzrggcIlyw4dCucP3/3OLJUNz4dATOEsCg3IuUu+6ZCPTnH4bknlKOUgiOiTyuEX7uxT3Jv/7pcFzSeoXj/f2K33w92aNLbHc4omjol/QIg1AKwTGjfXhmXSRMXlusM1YXAlNdKJrrwgC3CFULYbhHGP79XKjzL2VXhO24CzfsCcHc50LwxvOhaCNADxRXCsExVZ21Zwj+RJjDs3y5W6etIQnX0L9aDyLdi7E3BJMJYOwZqBaCYyKPa0Q992pw88bP98IsA2DeNxCwYoBaCI6JPK7xIUXf2AFaav8AwAalEBwTeQe6qxAHgwHGgWC1EBzT8rqjEPW01Iu0HOMFF0JwTOTVd0sh+sJ8qD9gg1IIjok8rvEhRd/YYVrqcD/ABqUQHNPyuqsQr/QFGEf6qIXgmMjrlkIcCURkQx+A8WoffN0Y4vx2/kvBuJVjIq+htx//ltNbdioY1x3tjRYCbHiHsPK1ICxh0HnVa71xSsTpfL7J5P4P6r+X1hiIhY1BgBEcC8R8f/P1mvEHPid6YdPxQFw+EQjogWJtx3tho5EPgb/3drInQgkrX++JWhlWXy/PbjHoKvsfBnDDuaIeUt0AAAAASUVORK5CYII=" />
+                                </defs>
+                                <style>
+                                </style>
+                                <use id="Background" href="#img1" x="17" y="9" />
+                            </svg>
+
+                        </span>
+                    </div>
+                    <!--ME-->
+                    <div v-if="message.sender === 'user'" class="mr-2">
+                        <span class="rounded-full bg-gray-300 w-8 h-8 flex items-center justify-center mr-4 text-xs
+                        ">Me</span>
+                    </div>
+
+                    <div class="message-content text-black p-10" v-html="formatMessage(message.text)"></div>
+
+                </div>
+            </div>
+
+            <!-- INPUT AREA-->
+            <div class=" bg-white input-area">
+
+                <!--File attachment coming soon! -->   
+                <label for="my_modal_5" class="btn" onclick="my_modal_5.showModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+                      </svg>                                   
+                </label>
+                    <dialog id="my_modal_5" class="modal modal-bottom sm:modal-middle">
+                    <div class="modal-box">
+                        <h3 class="font-bold text-lg">Attach File</h3>
+                        <p class="py-4">✨ Coming Soon!</p>
+                        <div class="modal-action">
+                        <form method="dialog">
+                            <!-- if there is a button in form, it will close the modal -->
+                            <button class="btn border border-white">Close</button>
+                        </form>
+                        </div>
+                    </div>
+                    </dialog>
+                 
+                    <!--
+                      ----------------------------------------------------------------------
+                      NOTE: Use this when ready to perform RAG
+                      ----------------------------------------------------------------------
+
+                    -->
+                    <!-- <label for="file-upload" class="btn ">
+                  
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+                      </svg>
+                      
+
+
+                    <input type="file" id="file-upload" @change="handleFileUpload" accept=".pdf,.txt,.md" />
+                </label> -->
+                <textarea v-model="userInput" rows="1" class="textarea textarea-bordered rounded-lg"
+                    placeholder="Type your message..."></textarea>
+                <button @click="getResponse" :disabled="loading" class="btn btn-primary">
+
+                    {{ loading ? 'Loading...' : 'Send' }}
+                </button>
+            </div>
+            <!--END of Main Conversation area-->
+        </div>
+    </div>
+    </div>
+    <script type="module" src="index.js"></script>
+</body>
+
+</html>
